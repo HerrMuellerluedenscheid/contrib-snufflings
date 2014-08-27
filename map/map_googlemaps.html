@@ -16,8 +16,8 @@
              white-space: nowrap;
            }
          </style>
-        <script src="http://maps.googleapis.com/maps/api/js?key=AIzaSyDY0kkJiTPVd2U7aTOAwhc9ySH6oHxOIYM&sensor=false">
-        </script>
+         <script src="http://maps.googleapis.com/maps/api/js?key=AIzaSyDY0kkJiTPVd2U7aTOAwhc9ySH6oHxOIYM&sensor=false"></script>
+                                    
         <script type="text/javascript" src="http://google-maps-utility-library-v3.googlecode.com/svn/tags/markerwithlabel/1.1.9/src/markerwithlabel.js"></script>
         <script type="text/javascript" src="loadxmldoc.js"></script>
         <script>
@@ -78,6 +78,11 @@
                               '\n depth: '+depth+
                               '\n magnitude: '+mag
                           });
+
+                      // OBACHT! time ist ja hier nur lokal!!!
+                      google.maps.event.addListener(marker[i],  
+                          'click',  
+                          function(mouseEvent) { send_goto(time);});//marker[i]); });
                     if (deb[i].attributes.getNamedItem("active").value == 'yes'){
                         filling='#0000FF'}
                     else {
@@ -111,6 +116,15 @@
                    gmarkers.push(stationMarker[i]); 
                 } 
 
+            function send_goto(t){
+                var ws;
+                ws = new WebSocket("ws://localhost:9876/");
+                ws.onopen = function(){
+                    ws.send(t.toString());
+                };
+                ws.onclose = function(){
+                    console.log("Server disconnected");
+                    };}
 
             function hide(category) {
                 for (i=0; i<gmarkers.length; i++) {
