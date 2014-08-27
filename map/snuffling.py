@@ -2,6 +2,7 @@ import subprocess
 import os
 import tempfile
 import shutil
+from socket_server import SnufflingSocket
 from pyrocko.snuffling import Snuffling, Param, Switch, Choice
 from pyrocko import util, gui_util, guts
 from xmlMarker import (XMLEventMarker, EventMarkerList, XMLStationMarker,
@@ -77,7 +78,6 @@ class MapMaker(Snuffling):
                                   'open_external', False))
         self.add_parameter(Choice('Provider', 'map_kind', 'OpenStreetMap',
                                   ['OpenStreetMap', 'Google Maps']))
-
         self.set_live_update(False)
 
     def call(self):
@@ -149,6 +149,8 @@ class MapMaker(Snuffling):
                 url,
                 name='Map %i (%s)' % (g_counter, self.map_kind))
 
+        self.socket = SnufflingSocket(action=self.get_viewer().go_to_time)
+        self.socket.start_server()
 
 def __snufflings__():
     return [ MapMaker() ]
