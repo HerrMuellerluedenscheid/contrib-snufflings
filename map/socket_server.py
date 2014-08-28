@@ -3,13 +3,17 @@ import socket
 import threading
 import struct
 import hashlib
+import threading 
+from pyrocko import util
 
 
-class SnufflingSocket():
+class SnufflingSocket(threading.Thread):
     def __init__(self, action=None):
+        threading.Thread.__init__(self)
         self.PORT = 9876
         self.clients = []
         self.action = action
+        self._stop_server = False
 
     def create_handshake_resp(self, handshake):
         final_line = ""
@@ -45,12 +49,12 @@ class SnufflingSocket():
             origin, host, token)
 
 
-    def handle(self, s, addr):
+    def handle(self, s, addr, stop_event):
         data = s.recv(1024)
         s.send(self.create_handshake_resp(data))
         lock = threading.Lock()
 
-        while 1:
+        while not stop_event.is_set():
             print "Waiting for data from", s, addr
             data = s.recv(1024)
             print "Done"
@@ -72,19 +76,36 @@ class SnufflingSocket():
         lock.release()
         s.close()
 
-    def start_server(self):
+    def run(self):
+        print 'starting server'
         s = socket.socket()
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('', self.PORT))
         s.listen(1)
-        while 1:
+        self.stop_thread = threading.Event()
+        while 1:# and not self._stop_server:
             conn, addr = s.accept()
             print 'Connected by', addr
             self.clients.append(conn)
-            threading.Thread(target = self.handle, args = (conn, addr)).start()
+            self.server_thread = threading.Thread(target = self.handle, args = (conn, addr, self.stop_thread)).start()
+
+    def join(self):
+        print 'stopping server'
+        self.stop_thread.set()
+        self.server_thread.join()
 
     def update_action(self, data):
-        self.action(data)
+        print 'updating'
+        #TESTING::::::::::
+        #self.server_thread.join()
+        data = data[:-1]
+        data = data.replace(",",".")
+        print data
+        print type(data)
+        data = str(data)
+        t = util.str_to_time(data)
+        #print t
+        #self.action(t)
 
     #clients = []
     #start_server()

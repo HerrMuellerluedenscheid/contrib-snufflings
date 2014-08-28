@@ -2,6 +2,7 @@ import subprocess
 import os
 import tempfile
 import shutil
+import threading
 from socket_server import SnufflingSocket
 from pyrocko.snuffling import Snuffling, Param, Switch, Choice
 from pyrocko import util, gui_util, guts
@@ -145,8 +146,21 @@ class MapMaker(Snuffling):
                 url,
                 name='Map %i (%s)' % (g_counter, self.map_kind))
 
-        self.socket = SnufflingSocket(action=self.get_viewer().go_to_time)
-        self.socket.start_server()
+        self.map_socket = SnufflingSocket(action=self.get_viewer().go_to_time)
+        self.map_socket.start()
+
+    def pre_destroy(self):
+        self.cleanup()
+        try:
+            self.map_socket.join()
+        except AttributeError:
+            pass
+
+        if self._tempdir is not None:
+            import shutil
+            shutil.rmtree(self._tempdir)
+
+
 
 def __snufflings__():
     return [ MapMaker() ]
