@@ -30,7 +30,6 @@ def crop_invalid(string):
 
     return string
 
-
 datastr = ''
 for i, bound in enumerate(sections):
     header = headers[i]
