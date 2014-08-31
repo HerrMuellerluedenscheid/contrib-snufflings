@@ -150,8 +150,16 @@ class MapMaker(Snuffling):
                 url,
                 name='Map %i (%s)' % (g_counter, self.map_kind))
 
-        self.map_socket = SnufflingSocket(action=self.get_viewer().go_to_time)
+        self.map_socket = SnufflingSocket(action=self.go_to_time)
         self.map_socket.start()
+
+    def go_to_time(self, t):
+        #t = util.str_to_time(t)
+        print 'snuff'
+        print t
+        print type(t)
+        t = float(t)
+        self.get_viewer().go_to_time(t)
 
     def pre_destroy(self):
         self.cleanup()

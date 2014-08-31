@@ -4,6 +4,7 @@ import threading
 import struct
 import hashlib
 import threading 
+import time
 from pyrocko import util
 
 
@@ -99,13 +100,16 @@ class SnufflingSocket(threading.Thread):
         #TESTING::::::::::
         #self.server_thread.join()
         data = data[:-1]
-        data = data.replace(",",".")
+        #data = data.replace(",",".")
         print data
         print type(data)
-        data = str(data)
-        t = util.str_to_time(data)
+        #data = float(data)
+        print data
+        #data = str(data).split('.')[0]
+        #t = util.str_to_time(data,format='%Y-%m-%d %H:%M:%S.FRAC')
         #print t
-        #self.action(t)
+        self.action(data)
+        time.sleep(1.)
 
     #clients = []
     #start_server()

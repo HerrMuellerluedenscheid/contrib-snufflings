@@ -118,13 +118,20 @@
 
             function send_goto(t){
                 var ws;
+                t = t.replace(" ","T");
+                t = t.split(",")[0];
+                t = t+"Z";
+
+                var time = Date.parse(t);
+                console.log("Go to time: "+time)
                 ws = new WebSocket("ws://localhost:9876/");
                 ws.onopen = function(){
-                    ws.send(t.toString());
+                    ws.send(time.toString());
                 };
                 ws.onclose = function(){
                     console.log("Server disconnected");
-                    };}
+                    };
+            }
 
             function hide(category) {
                 for (i=0; i<gmarkers.length; i++) {
