@@ -2,12 +2,12 @@ import subprocess
 import os
 import tempfile
 import shutil
-import threading
 from socket_server import SnufflingSocket
 from pyrocko.snuffling import Snuffling, Param, Switch, Choice
 from pyrocko import util, gui_util, guts
 from xmlMarker import (XMLEventMarker, EventMarkerList, XMLStationMarker,
     StationMarkerList, MarkerLists, dump_xml)
+import re
 from PyQt4.QtCore import QUrl 
 from PyQt4.QtGui import QDesktopServices
 
@@ -154,10 +154,7 @@ class MapMaker(Snuffling):
         self.map_socket.start()
 
     def go_to_time(self, t):
-        #t = util.str_to_time(t)
-        print 'snuff'
-        print t
-        print type(t)
+        t = re.sub("[^0-9]", "", t)
         t = float(t)
         self.get_viewer().go_to_time(t)
 
