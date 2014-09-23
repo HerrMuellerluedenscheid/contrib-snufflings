@@ -25,6 +25,21 @@ class BeamForming(Snuffling):
         self.add_parameter(Switch('Pre-filter with main filters',
             'prefilter', True))
 
+    
+    def center_lat_lon(self, stations):
+        '''Calculate a mean geographical centre of the array
+        using spherical earth'''
+
+        lats = num.zeros(len(stations))
+        lons = num.zeros(len(stations))
+        for s in stations:
+            lats[i] = s.lat/180.*num.pi
+            lons[i] = s.lon/180.*num.pi
+        x = num.cos(lats) * num.cos(lons)
+        y = num.cos(lats) * num.sin(lons)
+
+        return (lats.mean()*180/num.pi, lons.mean()*180/num.pi)
+
     def call(self):
         
         self.cleanup()
@@ -38,22 +53,23 @@ class BeamForming(Snuffling):
  
         if not self.lat_c and not self.lon_c:
             epi_distances = [ortho.distance_accurate50m(event, s) for s in stations]
-            closest_station = stations[epi_distances.index(min(epi_distances))]
-            self.lat_c = closest_station.lat
-            self.lon_c = closest_station.lon
+            station_c = stations[epi_distances.index(min(epi_distances))]
+            self.lat_c = station_c.lat
+            self.lon_c = station_c.lon
         else:
-            closest_station = Station(lat=self.lat_c, lon=self.lon_c)
+            self.lat_c, self.lon_c = self.center_lat_lon(stations)
+            station_c = Station(lat=self.lat_c, lon=self.lon_c)
         
-        distances = [ortho.distance_accurate50m(closest_station, s) for s in
+        distances = [ortho.distance_accurate50m(station_c, s) for s in
                 stations]
-        print ' closest station lat lon: ', closest_station.lat
-        print ' closest station lat lon: ', closest_station.lon
+        print ' closest station lat lon: ', station_c.lat
+        print ' closest station lat lon: ', station_c.lon
          
         azirad = self.bazi/180.*num.pi
         print 'azimuth rad ', azirad
 
         self.bazi = 180.*num.pi
-        azis = num.array([ortho.azimuth(s, closest_station) for s in stations])
+        azis = num.array([ortho.azimuth(s, station_c) for s in stations])
         print 'pure azis', azis
         azis %= 360.
         azis = azis/180.*num.pi
