@@ -32,7 +32,7 @@ class BeamForming(Snuffling):
 
         lats = num.zeros(len(stations))
         lons = num.zeros(len(stations))
-        for s in stations:
+        for i,s in enumerate(stations):
             lats[i] = s.lat/180.*num.pi
             lons[i] = s.lon/180.*num.pi
         x = num.cos(lats) * num.cos(lons)
@@ -43,22 +43,12 @@ class BeamForming(Snuffling):
     def call(self):
         
         self.cleanup()
-        print self.lat_c
-        print self.lon_c
-
-        try:
-            event, stations = self.get_active_event_and_stations()
-        except:
-            raise
+        stations = self.get_stations()
  
         if not self.lat_c and not self.lon_c:
-            epi_distances = [ortho.distance_accurate50m(event, s) for s in stations]
-            station_c = stations[epi_distances.index(min(epi_distances))]
-            self.lat_c = station_c.lat
-            self.lon_c = station_c.lon
-        else:
             self.lat_c, self.lon_c = self.center_lat_lon(stations)
-            station_c = Station(lat=self.lat_c, lon=self.lon_c)
+        station_c = Station(lat=self.lat_c, lon=self.lon_c, name='Array Center')
+        self.get_viewer().add_stations([station_c])
         
         distances = [ortho.distance_accurate50m(station_c, s) for s in
                 stations]
@@ -68,7 +58,7 @@ class BeamForming(Snuffling):
         azirad = self.bazi/180.*num.pi
         print 'azimuth rad ', azirad
 
-        self.bazi = 180.*num.pi
+        #self.bazi = 180.*num.pi
         azis = num.array([ortho.azimuth(s, station_c) for s in stations])
         print 'pure azis', azis
         azis %= 360.
@@ -102,7 +92,6 @@ class BeamForming(Snuffling):
                 try:
                     stats = filter(lambda x: util.match_nslc('%s.%s.%s.*'%x.nsl(),
                                                         nslc_id), stations)
-                    print stats
                     stat = stats[0]
                 except IndexError:
                     print 'EMPTY? maybe no station infos'
@@ -114,8 +103,6 @@ class BeamForming(Snuffling):
 
                 d = num.cos(gamma)*distances[i]
                 t_shift = d*self.slow/1000.
-                print 'd' ,d
-                print 'tshift', t_shift
                 tr.shift(-t_shift)
                 stack_trace.add(tr)
 
