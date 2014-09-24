@@ -98,8 +98,8 @@ class MapMaker(Snuffling):
             if not util.match_nslc(viewer.blacklist, stat.nsl()):
                 xml_station_marker = XMLStationMarker(
                     nsl='.'.join(stat.nsl()),
-                    longitude = stat.lon,
-                    latitude = stat.lat,
+                    longitude = float(stat.lon),
+                    latitude = float(stat.lat),
                     active = 'yes')
 
             station_list.append(xml_station_marker)
