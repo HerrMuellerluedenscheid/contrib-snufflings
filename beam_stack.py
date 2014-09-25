@@ -9,8 +9,6 @@ class BeamForming(Snuffling):
     '''
     TODO:
     Consider differing sampling rates!
-    Pre filter 
-    Use geographical array center
     '''
     def setup(self):
         self.set_name("Beam Forming")
@@ -19,61 +17,57 @@ class BeamForming(Snuffling):
         self.add_parameter(Param('Center lon', 'lon_c', 180., -180., 180.,
                                 high_is_none=True))
         self.add_parameter(Param('Back azimuth', 'bazi', 0., 0., 360.))
-        self.add_parameter(Param('Slowness', 'slow', 0.2, 0., 8))
+        self.add_parameter(Param('Slowness', 'slow', 0.2, 0., 4))
         self.add_parameter(Switch('Normalize Traces(not implemented)',
             'normalize', False))
         self.add_parameter(Switch('Pre-filter with main filters',
             'prefilter', True))
-
-    
-    def center_lat_lon(self, stations):
-        '''Calculate a mean geographical centre of the array
-        using spherical earth'''
-
-        lats = num.zeros(len(stations))
-        lons = num.zeros(len(stations))
-        for i,s in enumerate(stations):
-            lats[i] = s.lat/180.*num.pi
-            lons[i] = s.lon/180.*num.pi
-        x = num.cos(lats) * num.cos(lons)
-        y = num.cos(lats) * num.sin(lons)
-
-        return (lats.mean()*180/num.pi, lons.mean()*180/num.pi)
+        self.station_c = None
+        self.stacked_traces = None
 
     def call(self):
         
         self.cleanup()
+        viewer = self.get_viewer()
+        if self.station_c:
+            viewer.stations.pop(('', 'STK'))
+
         stations = self.get_stations()
  
-        if not self.lat_c and not self.lon_c:
+        if not self.lat_c or not self.lon_c:
             self.lat_c, self.lon_c = self.center_lat_lon(stations)
-        station_c = Station(lat=self.lat_c, lon=self.lon_c, name='Array Center')
-        self.get_viewer().add_stations([station_c])
+            self.set_parameter('lat_c', self.lat_c)
+            self.set_parameter('lon_c', self.lon_c)
+
+        self.station_c = Station(lat=self.lat_c, 
+                                 lon=self.lon_c, 
+                                 name='Array Center', 
+                                 network='',
+                                 station='STK')
+
+        viewer.add_stations([self.station_c])
         
-        distances = [ortho.distance_accurate50m(station_c, s) for s in
+        distances = [ortho.distance_accurate50m(self.station_c, s) for s in
                 stations]
-        print ' closest station lat lon: ', station_c.lat
-        print ' closest station lat lon: ', station_c.lon
          
         azirad = self.bazi/180.*num.pi
-        print 'azimuth rad ', azirad
-
-        #self.bazi = 180.*num.pi
-        azis = num.array([ortho.azimuth(s, station_c) for s in stations])
-        print 'pure azis', azis
+        azis = num.array([ortho.azimuth(s, self.station_c) for s in stations])
         azis %= 360.
         azis = azis/180.*num.pi
-        print 'worked azis', azis
 
         gammas = azis - azirad
         gammas = gammas%(2*num.pi)
-        print 'gammas ', gammas
 
-        # Iterate over all trace selections:
         stacked = defaultdict()
         for traces in self.chopper_selected_traces(fallback=True):
             for tr in traces:
                 tr = tr.copy()
+                if self.prefilter:
+                    if not viewer.lowpass:
+                        self.fail('Highpass and lowpass in viewer must be set!')
+                    tr.lowpass(4, viewer.lowpass)
+                    tr.highpass(4, viewer.highpass)
+
                 tr.ydata = tr.ydata.astype(num.float64)
                 tr.ydata -= tr.ydata.mean(dtype=num.float64)
                 try:
@@ -94,8 +88,7 @@ class BeamForming(Snuffling):
                                                         nslc_id), stations)
                     stat = stats[0]
                 except IndexError:
-                    print 'EMPTY? maybe no station infos'
-                    print 'stats ', stat
+                    print 'stats ', stats
                     break
                 
                 i = stations.index(stat)
@@ -108,6 +101,19 @@ class BeamForming(Snuffling):
 
         self.add_traces(stacked.values())
 
+    def center_lat_lon(self, stations):
+        '''Calculate a mean geographical centre of the array
+        using spherical earth'''
+
+        lats = num.zeros(len(stations))
+        lons = num.zeros(len(stations))
+        for i,s in enumerate(stations):
+            lats[i] = s.lat/180.*num.pi
+            lons[i] = s.lon/180.*num.pi
+        x = num.cos(lats) * num.cos(lons)
+        y = num.cos(lats) * num.sin(lons)
+
+        return (lats.mean()*180/num.pi, lons.mean()*180/num.pi)
     
 def __snufflings__():
     return [ BeamForming() ]
