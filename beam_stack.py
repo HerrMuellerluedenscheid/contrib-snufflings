@@ -7,8 +7,19 @@ from collections import defaultdict
 
 class BeamForming(Snuffling):
     '''
-    TODO:
-    Consider differing sampling rates!
+    <html>
+    <body>
+    <h1>Beam Formin</h1>
+
+    If not reference point is defined using 'Center lat' and 'Center lon'
+    calculated a geographical center by taking the average of latitudes and
+    longitudes.
+    
+    Activating normalization will normalize traces using their standard
+    deviation.
+    </body>
+    </html>
+
     '''
     def setup(self):
         self.set_name("Beam Forming")
@@ -18,8 +29,7 @@ class BeamForming(Snuffling):
                                 high_is_none=True))
         self.add_parameter(Param('Back azimuth', 'bazi', 0., 0., 360.))
         self.add_parameter(Param('Slowness', 'slow', 0.2, 0., 4))
-        self.add_parameter(Switch('Normalize Traces(not implemented)',
-            'normalize', False))
+        self.add_parameter(Switch('Normalize Traces', 'normalize', False))
         self.add_parameter(Switch('Pre-filter with main filters',
             'prefilter', True))
         self.station_c = None
@@ -97,6 +107,8 @@ class BeamForming(Snuffling):
                 d = num.cos(gamma)*distances[i]
                 t_shift = d*self.slow/1000.
                 tr.shift(-t_shift)
+                if self.normalize:
+                    tr.ydata = tr.ydata/tr.ydata.std()
                 stack_trace.add(tr)
 
         self.add_traces(stacked.values())

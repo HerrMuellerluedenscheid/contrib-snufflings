@@ -7,7 +7,10 @@ import numpy as num
 from collections import defaultdict
 
 class PickStack(Snuffling):
-    '''Stack Traces
+    '''
+    <html>
+    <body>
+    <h1>Stack Traces</h1>
 
     If method is 'CC', all you have to do is to either zoom into the window so
     that you see only traces you want to stack. 
@@ -15,10 +18,14 @@ class PickStack(Snuffling):
     picks PhaseMarkers by pressing F1, for example. Activate all phase picks by
     pressing 'e'. 
     Press run. 
+
+    Acitvating normalization will normalize using standard deviation.
+    </body>
+    </html>
     '''
     def setup(self):
         self.set_name("Quick Stack")
-        self.add_parameter(Switch('Pre-Normalize Traces(not implemented)',
+        self.add_parameter(Switch('Pre-Normalize Traces',
             'normalize', False))
         self.add_parameter(Switch('Pre-filter with main filters',
             'prefilter', True))
@@ -80,7 +87,7 @@ class PickStack(Snuffling):
                         tr.shift(-t)
                 
                 if self.normalize:
-                    tr.set_ydata(ydata/ydata.max())
+                    tr.set_ydata(ydata/ydata.std())
 
                 stack_trace.add(tr)
 
