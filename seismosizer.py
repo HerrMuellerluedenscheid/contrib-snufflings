@@ -8,7 +8,37 @@ from pyrocko import gf
 km = 1000.
 
 class Seismosizer(Snuffling):
+    '''<html>
+    <body>
+    <h1>Seismosizer - Waveform modeling using pyrocko's GF stores</h1>
+    Calculate synthetic seismograms for stations that have been loaded into
+    snuffler. If no stations have been loaded, two stations will be added by
+    default at [latitude, longitud]: [5.0, 0.0] and [-5.0, 0.0].<p>
 
+    <b>Parameters:</b><br />
+        <b>&middot; Time</b> - origin time of source<br />
+        <b>&middot; Latitude</b> - source's latitude<br />
+        <b>&middot; Longitude</b> - source's longitude<br />
+        <b>&middot; North shift</b> - north shift in km relative to location
+                    defined by Latitutde and Longitude<br />
+        <b>&middot; East shift</b> - east shift in km relative to location
+                    defined by Latitutde and Longitude<br />
+        <b>&middot; Magnitude</b> - magnitude of source<br />
+        <b>&middot; Strike </b> - striking angle of focal mechanism<br />
+        <b>&middot; Dip</b> - dipping angle of focal mechanism<br />
+        <b>&middot; Rake</b> - rake angle of focal mechanism<br />
+        <b>&middot; Length</b> - length of rupture plane in m<br />
+        <b>&middot; Width</b> - width of rupture plane in m<br />
+        <b>&middot; Nucleation X</b> - nucleation point (relative to rupture
+                    plane)<br />
+        <b>&middot; Rise-time</b> - rise time of defining source time function<br />
+        <b>&middot; GF-Store</b> - select a store_id to use for modeling<br />
+        <b>&middot; Set Enginde</b> - set the engine<br />
+        <b>&middot; Set Params from Event</b> - set source parameter from 
+                    activated event<br />
+    </body>
+    </html>
+    '''
     def __init__(self):
         Snuffling.__init__(self)
 
