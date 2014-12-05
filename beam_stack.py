@@ -30,8 +30,6 @@ class BeamForming(Snuffling):
         self.add_parameter(Param('Back azimuth', 'bazi', 0., 0., 360.))
         self.add_parameter(Param('Slowness', 'slow', 0.2, 0., 4))
         self.add_parameter(Switch('Normalize Traces', 'normalize', False))
-        self.add_parameter(Switch('Pre-filter with main filters',
-            'prefilter', True))
         self.station_c = None
         self.stacked_traces = None
 
@@ -72,12 +70,6 @@ class BeamForming(Snuffling):
         for traces in self.chopper_selected_traces(fallback=True):
             for tr in traces:
                 tr = tr.copy()
-                if self.prefilter:
-                    if not viewer.lowpass:
-                        self.fail('Highpass and lowpass in viewer must be set!')
-                    tr.lowpass(4, viewer.lowpass)
-                    tr.highpass(4, viewer.highpass)
-
                 tr.ydata = tr.ydata.astype(num.float64)
                 tr.ydata -= tr.ydata.mean(dtype=num.float64)
                 try:
