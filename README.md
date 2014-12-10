@@ -14,6 +14,10 @@ If you want to modify, develop, or keep up to date on any of these, it is
 preferable to clone the whole repos somewhere in your filesystem and just make
 symbolic links in `$HOME/.snufflings` for each snuffling to be used.
 
+You can create the requires symbolic links using the included setup script:
+
+    python setup.py link
+
 To add your own creation, simply clone this repos, add your stuff and a
 screenshot and send a pull request. 
 
