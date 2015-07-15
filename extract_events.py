@@ -1,6 +1,6 @@
 import sys, logging
-from pyrocko import util, io
-from pyrocko.snuffling import Snuffling, load_markers, Param, NoViewerSet
+from pyrocko import util, io, model
+from pyrocko.snuffling import Snuffling, load_markers, Param, NoViewerSet, Switch
 
 logger = logging.getLogger()
 
@@ -12,6 +12,7 @@ class ExtractEvents(Snuffling):
         self.set_name('Extract Events')
         self.add_parameter(Param('Start time rel. to event [s]', 'tbeg', 0., -3600., 0.))
         self.add_parameter(Param('End time rel. to event [s]', 'tend', 1200., 0., 3*3600.))
+        self.add_parameter(Switch('Write stations file', 'save_stations', True))
         self.set_live_update(False)
 
     def call(self):
@@ -40,6 +41,11 @@ class ExtractEvents(Snuffling):
 
             io.save(traces, out_filename, additional=dict(
                 eventname=eventname))
+
+        if self.save_stations:
+            fn = self.output_filename('Save stations', 
+                                      'stations.pf')
+            model.dump_stations(self.get_stations(), fn)
 
     def configure_cli_parser(self, parser):
 

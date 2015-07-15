@@ -19,15 +19,17 @@ class Integrate(Snuffling):
 
         self.set_name('Integrate')
         self.set_force_panel(True)
-        self.add_parameter(Param('tfade','tfade', 0., 0., 60))
-        self.add_parameter(Param('highpass','hp', 0., 0., 100, low_is_none=True))
-        self.add_parameter(Param('lowpass','lp', 200., 0., 200, high_is_none=True))
+        self.add_parameter(Param('fade','tfrac', 0.01, 0., 0.1))
+        #self.add_parameter(Param('highpass','hp', 0., 0., 100, low_is_none=True))
+        #self.add_parameter(Param('lowpass','lp', 200., 0., 200, high_is_none=True))
+        self.add_parameter(Param('highpass','hp', 0., 0., 20))
+        self.add_parameter(Param('lowpass','lp', 20., 0., 20))
         self.set_have_post_process_hook(True)
-        self.order = 4
+        self.order = 1
     def call(self):
         pass
 
-    def integrate(self, tr):
+    def integrate_trapezoidal(self, tr):
         if self.lp and self.lp*2.<1./tr.deltat:
             tr.lowpass(self.order, self.lp)
         if self.hp and self.hp*2.<1./tr.deltat:
@@ -40,17 +42,14 @@ class Integrate(Snuffling):
         tr.tmin += tr.deltat*0.5
         return tr
 
-    def integrate_(self, tr):
-        tr.transfer( transfer_function=self.integrationresponse)
-        print 'asdf'
-        #tr.transfer(tfade=self.tfade,
-        #            freqlimits=(self.hp/2., self.hp, self.lp, self.lp*2.),
-        #            transfer_function=self.integrationresponse)
+    def integrate(self, tr):
+        return tr.transfer(tfade=self.tfrac*(tr.tmax-tr.tmin),
+                    freqlimits=(self.hp/2., self.hp, self.lp, self.lp*1.6),
+                    transfer_function=self.integrationresponse)
 
     def post_process_hook(self, traces):
-        self.taperer = trace.CosFader(self.tfade)
-        #self.integrationresponse = trace.IntegrationResponse(n=3, gain=100000)
-        map(self.integrate, traces)
+        self.integrationresponse = trace.IntegrationResponse(n=self.order)
+        traces = map(self.integrate, traces)
         return traces
 
 def __snufflings__():
