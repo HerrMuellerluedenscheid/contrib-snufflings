@@ -1,3 +1,7 @@
+'''
+Name = Power Spectral Density
+'''
+
 from pyrocko.gui.snuffling import Snuffling, Param, Switch
 import numpy as num
 
