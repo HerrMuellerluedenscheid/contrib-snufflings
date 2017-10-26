@@ -1,3 +1,7 @@
+'''
+Name = Analytical Homogeneous Fullspace Greens Functions Solutions
+'''
+
 import numpy as num
 import math
 import os
