@@ -1,3 +1,6 @@
+'''
+Name = Waveform Cross-Correlation Matrix
+'''
 from __future__ import print_function
 
 import logging
