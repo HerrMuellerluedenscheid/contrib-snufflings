@@ -8,6 +8,7 @@ from pyrocko.gui.util import EventMarker
 from pyrocko import trace
 from pyrocko import cake
 from pyrocko import model
+from pyrocko import util
 from pyrocko import orthodrome as ortho
 from pyrocko.dataset import crust2x2
 
@@ -36,6 +37,12 @@ class Pstacker(Snuffling):
                   high_is_none=True))
         self.add_parameter(
             Param('Window - [s]:', 'win_neg', 0., 1, 100.,
+                  high_is_none=True))
+        self.add_parameter(
+            Param('Highpass', 'highpass', 0.7, 0., 100.,
+                  low_is_none=True))
+        self.add_parameter(
+            Param('Lowpass', 'lowpass', 9., 0.001, 100.,
                   high_is_none=True))
         self.add_parameter(
             Param('STALTA short', 'tshort', 0.5, 0., 5.,
@@ -105,25 +112,22 @@ class Pstacker(Snuffling):
         new_datalen = int(round((self.win_neg + self.win_pos) / deltat))
         ydata = num.zeros(new_datalen)
 
-        stack = trace.Trace(network='XX', station='XXX',
-                            tmin=-self.win_neg, tmax=tmax_stack,
-                            deltat=deltat, ydata=ydata)
-
         taper = trace.CosFader(xfrac=0.1)
+        by_nslc = {}
         for tr in snippets:
             # use sta lta, envelope, etc.
-            if viewer.highpass:
-                tr.highpass(4, viewer.highpass)
+            if self.highpass:
+                tr.highpass(4, self.highpass)
 
-            if viewer.lowpass:
-                tr.lowpass(4, viewer.lowpass)
+            if self.lowpass:
+                tr.lowpass(4, self.lowpass)
 
             if self.process == 'envelope':
                 tr.envelope()
 
             if self.process == 'sta/lta':
                 tr.sta_lta_centered(self.tshort, self.tshort * self.tlong)
-			
+            
             if self.process == 'abs':
                 ydata = tr.get_ydata()
                 tr.set_ydata(num.abs(ydata))
@@ -139,8 +143,14 @@ class Pstacker(Snuffling):
                 tr.set_ydata(ydata)
 
             tr.taper(taper)
+            by_nslc[tr.nslc_id] = tr
+
+        stack = trace.Trace(network='XX', station='XXX',
+                            tmin=-self.win_neg, tmax=tmax_stack,
+                            deltat=deltat, ydata=ydata)
+        for nslc_id, tr in by_nslc.items():
             stack.add(tr)
-        
+
         if self.fig is None or self.fframe.closed is True or not self._live_update:
             self.fframe = self.pylab(get='figure_frame')
             self.fig = self.fframe.gcf()
@@ -148,17 +158,17 @@ class Pstacker(Snuffling):
         if self._live_update:
             self.fig.clf()
 
-        ax = self.fig.add_subplot(121)
+        ax = self.fig.add_subplot(131)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         for tr in snippets:
             ax.plot(tr.get_xdata(), tr.get_ydata(), alpha=0.5,# color='grey',
                     label='.'.join(tr.nslc_id))
-        d = num.ones(new_datalen)
+        d = num.ones(stack.data_len())
         taper(d, 0, deltat)
         ax.plot(stack.get_xdata(), d, color='grey', alpha=0.3, label='taper')
         ax.legend()
-        ax = self.fig.add_subplot(122)
+        ax = self.fig.add_subplot(132)
 
         ax.plot(stack.get_xdata(), stack.get_ydata(), color='black')
         phases_ordered = defaultdict(list)
@@ -167,7 +177,7 @@ class Pstacker(Snuffling):
             last_distance = None
             distance_to_station = {}
             depth = int(self.depth) * 1000.
-            phase_strings = ['P', 'pP', 'sP', 'PP']
+            phase_strings = ['P', 'pP', 'sP']
             colors = dict(zip(phase_strings, 'rgby'))
             phase_key = '.'.join(phase_strings)
             phase_defs = [cake.PhaseDef(x) for x in phase_strings]
@@ -219,6 +229,50 @@ class Pstacker(Snuffling):
         ax.spines['right'].set_visible(False)
         ax.legend()
         ax.set_xlim(-self.win_neg, self.win_pos)
+
+        if self.highpass:
+            tmax_stack = 1./self.highpass
+        else:
+            tmax_stack = 1.
+        if self.phases:
+
+            stacks = []
+            ztest = num.arange(1, 30, 2) * 1000.
+            for z in ztest[::-1]:
+                ydata = num.zeros(new_datalen)
+
+                stack = trace.Trace(network='', station='Z%i'%z,
+                    tmin=0, tmax=tmax_stack, #tmax=tmax_stack,
+                    deltat=deltat, ydata=ydata)
+                # print('%i %i' % (z, max(ztest)))
+                phases = earth_model.arrivals(
+                    distances=distances, phases=phase_defs, zstart=z)
+                # print(phases)
+                last_distance = None
+                for p in phases:
+                    if p.x != last_distance:
+                        first = p.t
+                        last_distance = p.x
+                    # print(p)
+                    station = distance_to_station[p.x]
+                    for tr in snippets:
+                        if util.match_nslc(".".join(station.nsl()) + '*', tr.nslc_id):
+                            tr = tr.copy(data=True)
+                            tr.shift(-(p.t-first))
+                            # print('depth', z, 'trace', tr, 'stack', stack, 'shift', -(p.t-first))
+                            # print('/' * 10)
+                            self.add_trace(tr)
+
+                            stack.add(tr)
+
+                stacks.append((z, stack))
+
+            for (depth, stack) in stacks:
+                ax = self.fig.add_subplot(133)
+                #ax.plot(depth, stack.max()[1], 'o', color='black')
+                ax.plot(depth, num.sum(stack.get_ydata()), 'o', color='black')
+                self.add_trace(stack)
+
         self.fig.canvas.draw()
         
 
