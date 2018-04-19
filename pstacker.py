@@ -18,12 +18,7 @@ class Pstacker(Snuffling):
     '''
     <html>
     <body>
-    <h1>Plot PSD (Power Spectral Density)</h1>
-
-    Visible or selected data is cut into windows of 2 x 'Window length',
-    tapered with a Hanning taper, FFTed, sqared, normalized and gathered by
-    mean or median and percentiles.
-
+    <h1></h1>
     </body>
     </html>
     '''
@@ -110,7 +105,7 @@ class Pstacker(Snuffling):
         tmax_stack = max([tr.tmax for tr in snippets])
 
         new_datalen = int(round((self.win_neg + self.win_pos) / deltat))
-        ydata = num.zeros(new_datalen)
+        ydata_zero = num.zeros(new_datalen)
 
         taper = trace.CosFader(xfrac=0.1)
         by_nslc = {}
@@ -130,7 +125,7 @@ class Pstacker(Snuffling):
             
             if self.process == 'abs':
                 ydata = tr.get_ydata()
-                tr.set_ydata(num.abs(ydata))
+                tr.set_ydata(ydata**2)
 
             if self.normalize:
                 ydata = tr.get_ydata()
@@ -142,12 +137,12 @@ class Pstacker(Snuffling):
                 ydata = ydata**2
                 tr.set_ydata(ydata)
 
-            tr.taper(taper)
+            tr.taper(taper, inplace=True)
             by_nslc[tr.nslc_id] = tr
 
         stack = trace.Trace(network='XX', station='XXX',
                             tmin=-self.win_neg, tmax=tmax_stack,
-                            deltat=deltat, ydata=ydata)
+                            deltat=deltat, ydata=ydata_zero)
         for nslc_id, tr in by_nslc.items():
             stack.add(tr)
 
@@ -158,18 +153,24 @@ class Pstacker(Snuffling):
         if self._live_update:
             self.fig.clf()
 
-        ax = self.fig.add_subplot(131)
+        ax = self.fig.add_subplot(121)
+        ax.spines['left'].set_visible(False)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        for tr in snippets:
+        ax.set_title('Normalized, filtered, absolute of traces')
+        ax.set_xlabel('Time [s] (after P)')
+        
+        for tr in by_nslc.values():
             ax.plot(tr.get_xdata(), tr.get_ydata(), alpha=0.5,# color='grey',
                     label='.'.join(tr.nslc_id))
         d = num.ones(stack.data_len())
         taper(d, 0, deltat)
         ax.plot(stack.get_xdata(), d, color='grey', alpha=0.3, label='taper')
-        ax.legend()
-        ax = self.fig.add_subplot(132)
+        ax.legend(loc=1)
+        ax.get_yaxis().set_ticks([])
 
+
+        ax = self.fig.add_subplot(122)
         ax.plot(stack.get_xdata(), stack.get_ydata(), color='black')
         phases_ordered = defaultdict(list)
         if self.phases:
@@ -177,7 +178,7 @@ class Pstacker(Snuffling):
             last_distance = None
             distance_to_station = {}
             depth = int(self.depth) * 1000.
-            phase_strings = ['P', 'pP', 'sP']
+            phase_strings = ['p', 'P', 'pP']
             colors = dict(zip(phase_strings, 'rgby'))
             phase_key = '.'.join(phase_strings)
             phase_defs = [cake.PhaseDef(x) for x in phase_strings]
@@ -219,7 +220,7 @@ class Pstacker(Snuffling):
                     last_distance = p.x
                 phases_ordered[p.given_phase().definition()].append(p.t - first)
 
-            ax.set_title('depth = %s km' % depth)
+            ax.set_title('Stacked CFs, depth = %s km' % (depth/1000.))
 
         for phase_name, phases in phases_ordered.items():
             for t in phases:
@@ -227,6 +228,7 @@ class Pstacker(Snuffling):
 
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
+        ax.set_xlabel('Time [s] (after P)')
         ax.legend()
         ax.set_xlim(-self.win_neg, self.win_pos)
 
@@ -234,44 +236,44 @@ class Pstacker(Snuffling):
             tmax_stack = 1./self.highpass
         else:
             tmax_stack = 1.
-        if self.phases:
+        #if self.phases:
 
-            stacks = []
-            ztest = num.arange(1, 30, 2) * 1000.
-            for z in ztest[::-1]:
-                ydata = num.zeros(new_datalen)
+        #    stacks = []
+        #    ztest = num.arange(1, 30, 2) * 1000.
+        #    for z in ztest[::-1]:
+        #        ydata = num.zeros(new_datalen)
 
-                stack = trace.Trace(network='', station='Z%i'%z,
-                    tmin=0, tmax=tmax_stack, #tmax=tmax_stack,
-                    deltat=deltat, ydata=ydata)
-                # print('%i %i' % (z, max(ztest)))
-                phases = earth_model.arrivals(
-                    distances=distances, phases=phase_defs, zstart=z)
-                # print(phases)
-                last_distance = None
-                for p in phases:
-                    if p.x != last_distance:
-                        first = p.t
-                        last_distance = p.x
-                    # print(p)
-                    station = distance_to_station[p.x]
-                    for tr in snippets:
-                        if util.match_nslc(".".join(station.nsl()) + '*', tr.nslc_id):
-                            tr = tr.copy(data=True)
-                            tr.shift(-(p.t-first))
-                            # print('depth', z, 'trace', tr, 'stack', stack, 'shift', -(p.t-first))
-                            # print('/' * 10)
-                            self.add_trace(tr)
+        #        stack = trace.Trace(network='', station='Z%i'%z,
+        #            tmin=0, tmax=tmax_stack, #tmax=tmax_stack,
+        #            deltat=deltat, ydata=ydata)
+        #        # print('%i %i' % (z, max(ztest)))
+        #        phases = earth_model.arrivals(
+        #            distances=distances, phases=phase_defs, zstart=z)
+        #        # print(phases)
+        #        last_distance = None
+        #        for p in phases:
+        #            if p.x != last_distance:
+        #                first = p.t
+        #                last_distance = p.x
+        #            # print(p)
+        #            station = distance_to_station[p.x]
+        #            for tr in snippets:
+        #                if util.match_nslc(".".join(station.nsl()) + '*', tr.nslc_id):
+        #                    tr = tr.copy(data=True)
+        #                    tr.shift(-(p.t-first))
+        #                    # print('depth', z, 'trace', tr, 'stack', stack, 'shift', -(p.t-first))
+        #                    # print('/' * 10)
+        #                    self.add_trace(tr)
 
-                            stack.add(tr)
+        #                    stack.add(tr)
 
-                stacks.append((z, stack))
+        #        stacks.append((z, stack))
 
-            for (depth, stack) in stacks:
-                ax = self.fig.add_subplot(133)
-                #ax.plot(depth, stack.max()[1], 'o', color='black')
-                ax.plot(depth, num.sum(stack.get_ydata()), 'o', color='black')
-                self.add_trace(stack)
+        #    # for (depth, stack) in stacks:
+        #    #     ax = self.fig.add_subplot(133)
+        #    #     #ax.plot(depth, stack.max()[1], 'o', color='black')
+        #    #     ax.plot(depth, num.sum(stack.get_ydata()), 'o', color='black')
+        #    #     self.add_trace(stack)
 
         self.fig.canvas.draw()
         
